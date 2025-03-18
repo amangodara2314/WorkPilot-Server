@@ -3,9 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
+const router = require("./routers/routes");
 
 app.use(cors());
 app.use(express.json());
+app.use("/api", router);
 
 mongoose
   .connect(process.env.MONGODB_URI)
