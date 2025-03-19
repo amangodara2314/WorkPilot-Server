@@ -4,6 +4,7 @@ const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
 const router = require("./routers/routes");
+const seedDatabase = require("./utils/seed");
 
 app.use(cors());
 app.use(express.json());
@@ -11,7 +12,8 @@ app.use("/api", router);
 
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
+    await seedDatabase();
     app.listen(process.env.PORT || 5000, () => {
       console.log(
         "db connected and Server is running on port " + process.env.PORT || 5000
