@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema({
   currentWorkshop: {
     type: mongoose.Schema.ObjectId,
     ref: "Workshop",
+    required: true,
   },
 });
 

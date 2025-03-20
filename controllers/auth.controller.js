@@ -5,6 +5,7 @@ const User = require("../models/user.model");
 const Workshop = require("../models/workshop.model");
 const { oauth2Client } = require("../utils/googleConfig");
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 
 const register = async (req, res) => {
   const { name, email, password } = req.body;
@@ -50,14 +51,15 @@ const googleRegister = async (req, res) => {
     const workshop = await Workshop.create(
       [
         {
-          name: `${userInfo.name}'s Workshop`,
+          name: `${userInfo.name}'s workshop`,
           owner: user._id,
         },
       ],
       { session }
     );
+    console.log(user._id, workshop);
 
-    user.currentWorkshop = workshop._id;
+    user.currentWorkshop = workshop[0]._id;
     await user.save({ session });
 
     const userRole = await Role.findOne({ name: "Owner" });
@@ -68,7 +70,7 @@ const googleRegister = async (req, res) => {
       [
         {
           user: user._id,
-          workshop: workshop._id,
+          workshop: workshop[0]._id,
           role: userRole._id,
         },
       ],
@@ -76,9 +78,9 @@ const googleRegister = async (req, res) => {
     );
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
 
-    session.commitTransaction();
+    await session.commitTransaction();
     session.endSession();
-    res.status(201).json({ user, workshop, token });
+    res.status(201).json({ user, workshop: workshop[0], token });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
