@@ -12,6 +12,7 @@ const taskSchema = new mongoose.Schema({
     trim: true,
   },
   batch: {
+    type: String,
     enum: ["Bug", "Feature", "Documentation", "Other"],
     required: true,
   },
@@ -25,17 +26,24 @@ const taskSchema = new mongoose.Schema({
     ref: "User",
   },
   status: {
+    type: String,
     enum: ["in-review", "in-progress", "backlog", "completed", "pending"],
     required: true,
     default: "pending",
   },
   priority: {
+    type: String,
     enum: ["low", "medium", "high"],
     required: true,
     default: "low",
   },
   dueDate: {
     type: Date,
+  },
+  workshop: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Workshop",
+    required: true,
   },
 });
 
