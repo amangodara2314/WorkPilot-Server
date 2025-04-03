@@ -15,6 +15,7 @@ const taskSchema = new mongoose.Schema({
     type: String,
     enum: ["Bug", "Feature", "Documentation", "Other"],
     required: true,
+    default: "Other",
   },
   project: {
     type: mongoose.Schema.Types.ObjectId,
