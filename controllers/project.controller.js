@@ -5,9 +5,7 @@ const Project = require("../models/project.model");
 
 const createProject = async (req, res) => {
   try {
-    const { name, description, emoji } = req.body;
     const user = await User.findById(req.userId);
-    console.log(user);
 
     const member = await Member.findOne({
       user: req.userId,
@@ -27,10 +25,8 @@ const createProject = async (req, res) => {
     console.log(user);
     const project = await Project.create({
       name,
-      description,
       emoji,
       createdBy: req.userId,
-      workshop: user.currentWorkshop,
     });
 
     res.status(201).json({ project });
@@ -65,4 +61,65 @@ const getProjectDetails = async (req, res) => {
   }
 };
 
-module.exports = { createProject, getProjects, getProjectDetails };
+const updateProject = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: user.currentWorkshop,
+    }).populate({
+      path: "role",
+      populate: { path: "permissions", model: "Permission" },
+    });
+    if (!user || !member) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (!member.role.permissions.project.includes("edit")) {
+      return res
+        .status(403)
+        .json({ message: "You don't have permission to update a project" });
+    }
+    const project = await Project.findOneAndUpdate(req.params.id, req.body);
+
+    res.status(200).json({ project });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+const deleteProject = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: user.currentWorkshop,
+    }).populate({
+      path: "role",
+      populate: { path: "permissions", model: "Permission" },
+    });
+    if (!user || !member) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (!member.role.permissions.project.includes("delete")) {
+      return res
+        .status(403)
+        .json({ message: "You don't have permission to delete a project" });
+    }
+    const project = await Project.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ project });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+module.exports = {
+  createProject,
+  getProjects,
+  getProjectDetails,
+  updateProject,
+  deleteProject,
+};
