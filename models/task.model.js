@@ -1,6 +1,13 @@
 const mongoose = require("mongoose");
+const { generateTaskCode } = require("../utils/helper");
 
 const taskSchema = new mongoose.Schema({
+  taskCode: {
+    type: String,
+    required: true,
+    unique: true,
+    default: generateTaskCode(),
+  },
   title: {
     type: String,
     required: true,
@@ -28,7 +35,14 @@ const taskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["in-review", "in-progress", "backlog", "completed", "pending"],
+    enum: [
+      "in-review",
+      "in-progress",
+      "backlog",
+      "completed",
+      "pending",
+      "canceled",
+    ],
     required: true,
     default: "pending",
   },

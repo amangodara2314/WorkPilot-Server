@@ -73,7 +73,7 @@ const createWorkshop = async (req, res) => {
       [
         {
           ...req.body,
-          createdBy: req.userId,
+          owner: req.userId,
         },
       ],
       { session }
@@ -92,9 +92,10 @@ const createWorkshop = async (req, res) => {
       ],
       { session }
     );
+    member[0].workshop = workshop[0];
     await session.commitTransaction();
     session.endSession();
-    res.status(201).json({ workshop, member });
+    res.status(201).json({ workshop: member[0] });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -126,9 +127,11 @@ const updateWorkshop = async (req, res) => {
     const workshop = await Workshop.findByIdAndUpdate(req.params.id, req.body, {
       session,
     });
+    workshop.name = req.body.name;
+    workshop.description = req.body.description;
     await session.commitTransaction();
     session.endSession();
-    res.status(201).json({ workshop, member });
+    res.status(201).json({ workshop });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -138,27 +141,75 @@ const updateWorkshop = async (req, res) => {
 };
 
 const deleteWorkshop = async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
-    const user = await User.findById(req.userId);
-    const member = await Member.findOne({ user: req.userId }).populate({
-      path: "role",
-      populate: { path: "permissions", model: "Permission" },
-    });
+    session.startTransaction();
+    if (!req.params.id) {
+      return res.status(404).json({ message: "Workshop not found" });
+    }
+    const user = await User.findById(req.userId).session(session);
+    const member = await Member.findOne({ user: req.userId })
+      .populate({
+        path: "role",
+        populate: { path: "permissions", model: "Permission" },
+      })
+      .session(session);
+
     if (!user && !member) {
+      await session.abortTransaction();
       return res.status(404).json({ message: "User not found." });
     }
+
     if (!member.role.permissions.workshop.includes("delete")) {
+      await session.abortTransaction();
       return res.status(403).json({
         message: "You don't have permission to delete the workshop",
       });
     }
-    const workshop = await Workshop.findByIdAndDelete(req.params.id);
-    res
-      .status(200)
-      .json({ message: "Workshop deleted successfully!", workshop });
+
+    const userWorkshop = await Member.findOne({
+      user: req.userId,
+      workshop: { $ne: new mongoose.Types.ObjectId(req.params.id) },
+    })
+      .populate({
+        path: "user",
+        populate: { path: "currentWorkshop", model: "Workshop" },
+      })
+      .session(session);
+
+    if (!userWorkshop) {
+      await session.abortTransaction();
+      return res.status(403).json({
+        message:
+          "You cannot delete this workshop because you don't have any other workshop",
+      });
+    }
+
+    await Task.deleteMany({ workshop: req.params.id }).session(session);
+    await Member.deleteMany({ workshop: req.params.id }).session(session);
+    await Project.deleteMany({ workshop: req.params.id }).session(session);
+    const workshop = await Workshop.findByIdAndDelete(req.params.id).session(
+      session
+    );
+    console.log(userWorkshop.workshop);
+    user.currentWorkshop = userWorkshop.workshop;
+    await user.save({ session });
+    console.log(user.currentWorkshop);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Workshop deleted successfully!",
+      workshop,
+      userWorkshop: userWorkshop.workshop,
+    });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Internal Server Error" });
+    await session.abortTransaction();
+    session.endSession();
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -196,6 +247,25 @@ const joinWorkshop = async (req, res) => {
   }
 };
 
+const changeWorkshop = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const workshop = await Workshop.findById(req.params.id);
+    if (!workshop) {
+      return res.status(404).json({ message: "Workshop not found" });
+    }
+    user.currentWorkshop = req.params.id;
+    await user.save();
+    res.status(201).json({ message: "Workshop changed successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 const leaveWorkshop = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -221,4 +291,5 @@ module.exports = {
   deleteWorkshop,
   joinWorkshop,
   leaveWorkshop,
+  changeWorkshop,
 };

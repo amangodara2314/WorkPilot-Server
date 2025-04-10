@@ -109,7 +109,11 @@ const googleLogin = async (req, res) => {
       { userId: existingUser._id },
       process.env.JWT_SECRET
     );
-    res.status(200).json({ user: existingUser, token });
+    res.status(200).json({
+      user: existingUser,
+      token,
+      currentWorkshop: existingUser.currentWorkshop,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message });

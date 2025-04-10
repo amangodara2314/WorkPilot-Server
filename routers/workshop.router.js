@@ -7,12 +7,14 @@ const {
   deleteWorkshop,
   joinWorkshop,
   leaveWorkshop,
+  changeWorkshop,
 } = require("../controllers/workshop.controller");
 const workshopRouter = Router();
 
 workshopRouter.post("/", createWorkshop);
 workshopRouter.get("/details/:id", getWorkshopDetails);
 workshopRouter.get("/", getUserWorkshops);
+workshopRouter.patch("/change/:id", changeWorkshop);
 workshopRouter.put("/join/:id", joinWorkshop);
 workshopRouter.put("/leave/:id", leaveWorkshop);
 workshopRouter.put("/:id", updateWorkshop);

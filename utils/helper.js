@@ -4,4 +4,8 @@ function generateInviteCode() {
   return uuidv4().replace(/-/g, "").slice(0, 6);
 }
 
-module.exports = { generateInviteCode };
+function generateTaskCode() {
+  return uuidv4().replace(/-/g, "").slice(0, 4);
+}
+
+module.exports = { generateInviteCode, generateTaskCode };

@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const Member = require("../models/member.model");
 const Task = require("../models/task.model");
 const User = require("../models/user.model");
@@ -5,7 +6,10 @@ const User = require("../models/user.model");
 const createTask = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    const member = await Member.findOne({ user: req.userId }).populate({
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.body.workshop,
+    }).populate({
       path: "role",
       populate: { path: "permissions", model: "Permission" },
     });
@@ -29,7 +33,10 @@ const createTask = async (req, res) => {
 const updateTask = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    const member = await Member.findOne({ user: req.userId }).populate({
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.body.workshop,
+    }).populate({
       path: "role",
       populate: { path: "permissions", model: "Permission" },
     });
@@ -41,7 +48,19 @@ const updateTask = async (req, res) => {
         .status(403)
         .json({ message: "You don't have permission to edit a task" });
     }
-    const task = await Task.updateOne({ _id: req.params.id }, req.body);
+    console.log(req.body);
+    const { assignedTo, ...rest } = req.body;
+
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...rest,
+        assignedTo: new mongoose.Types.ObjectId(assignedTo),
+      },
+      { new: true }
+    ).populate("assignedTo", "name email _id profileImage");
+
+    console.log(task);
 
     res.status(200).json({ message: "Task updated successfully!", task });
   } catch (error) {
@@ -56,16 +75,57 @@ const getTasks = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const tasks = await Task.find({
+    const member = await Member.findOne({
+      user: req.userId,
       workshop: req.query.workshopId,
-      status: req.query.status,
-      priority: req.query.priority,
-      assignedTo: req.query.assignedTo,
-      project: req.query.project,
-      title: { $regex: req.query.title, $options: "i" },
-    }).populate("createdBy", "name email _id");
+    }).populate("role");
 
-    res.status(200).json({ tasks });
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    console.log(member, user, req.query);
+
+    const id = new mongoose.Types.ObjectId(req.query.workshopId);
+    console.log(id);
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const query = {
+      workshop: id,
+    };
+
+    console.log(req.query.title);
+    // Add filters only if they exist
+    if (req.query.status && req.query.status != "null")
+      query.status = req.query.status;
+    if (req.query.priority && req.query.priority != "null")
+      query.priority = req.query.priority;
+    if (req.query.title && req.query.title != "") {
+      query.title = { $regex: req.query.title, $options: "i" };
+    }
+
+    // If user is a member, restrict to assigned tasks
+    if (member.role.name === "Member") {
+      console.log("member");
+      query.assignedTo = req.userId;
+    }
+
+    const totalCount = await Task.countDocuments(query);
+
+    const tasks = await Task.find(query)
+      .populate("assignedTo", "name email _id profileImage")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    if (member.role.name !== "Member") {
+      console.log("tasks", tasks);
+    }
+
+    res.status(200).json({ tasks, totalCount });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -75,7 +135,10 @@ const getTasks = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    const member = await Member.findOne({ user: req.userId }).populate({
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.query.workshop,
+    }).populate({
       path: "role",
       populate: { path: "permissions", model: "Permission" },
     });
