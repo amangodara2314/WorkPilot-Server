@@ -125,7 +125,46 @@ const getTasks = async (req, res) => {
       console.log("tasks", tasks);
     }
 
-    res.status(200).json({ tasks, totalCount });
+    res.status(200).json({ tasks, totalCount, page });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const getTask = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.query.workshopId,
+    }).populate("role");
+
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+    if (member.role.name == "Member") {
+      const task = await Task.findOne({
+        _id: req.params.id,
+        assignedTo: req.userId,
+      }).populate("assignedTo", "name email _id profileImage");
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      return res.status(200).json({ task });
+    }
+
+    const task = await Task.findById(req.params.id).populate(
+      "assignedTo",
+      "name email _id profileImage"
+    );
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.status(200).json({ task });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -137,7 +176,7 @@ const deleteTask = async (req, res) => {
     const user = await User.findById(req.userId);
     const member = await Member.findOne({
       user: req.userId,
-      workshop: req.query.workshop,
+      workshop: req.query.workshopId,
     }).populate({
       path: "role",
       populate: { path: "permissions", model: "Permission" },
@@ -160,4 +199,4 @@ const deleteTask = async (req, res) => {
   }
 };
 
-module.exports = { createTask, updateTask, getTasks, deleteTask };
+module.exports = { createTask, updateTask, getTasks, deleteTask, getTask };
