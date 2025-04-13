@@ -6,7 +6,7 @@ const taskSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    default: generateTaskCode(),
+    default: () => generateTaskCode(),
   },
   title: {
     type: String,
@@ -18,7 +18,7 @@ const taskSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  batch: {
+  badge: {
     type: String,
     enum: ["Bug", "Feature", "Documentation", "Other"],
     required: true,
@@ -27,7 +27,7 @@ const taskSchema = new mongoose.Schema({
   project: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Project",
-    required: true,
+    required: true, // on delete cascade
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
@@ -58,7 +58,7 @@ const taskSchema = new mongoose.Schema({
   workshop: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Workshop",
-    required: true,
+    required: true, // on delete cascade
   },
 });
 

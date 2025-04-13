@@ -84,10 +84,7 @@ const getTasks = async (req, res) => {
       return res.status(404).json({ message: "Member not found" });
     }
 
-    console.log(member, user, req.query);
-
     const id = new mongoose.Types.ObjectId(req.query.workshopId);
-    console.log(id);
 
     const page = parseInt(req.query.page) || 1;
     const limit = 5;
@@ -97,14 +94,15 @@ const getTasks = async (req, res) => {
       workshop: id,
     };
 
-    console.log(req.query.title);
-    // Add filters only if they exist
     if (req.query.status && req.query.status != "null")
       query.status = req.query.status;
     if (req.query.priority && req.query.priority != "null")
       query.priority = req.query.priority;
-    if (req.query.title && req.query.title != "") {
+    if (req.query.title && req.query.title != "null") {
       query.title = { $regex: req.query.title, $options: "i" };
+    }
+    if (req.query.project && req.query.project != "null") {
+      query.project = req.query.project;
     }
 
     // If user is a member, restrict to assigned tasks
@@ -113,6 +111,8 @@ const getTasks = async (req, res) => {
       query.assignedTo = req.userId;
     }
 
+    console.log(query);
+
     const totalCount = await Task.countDocuments(query);
 
     const tasks = await Task.find(query)
@@ -120,10 +120,6 @@ const getTasks = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-
-    if (member.role.name !== "Member") {
-      console.log("tasks", tasks);
-    }
 
     res.status(200).json({ tasks, totalCount, page });
   } catch (error) {
@@ -150,17 +146,18 @@ const getTask = async (req, res) => {
       const task = await Task.findOne({
         _id: req.params.id,
         assignedTo: req.userId,
-      }).populate("assignedTo", "name email _id profileImage");
+      })
+        .populate("assignedTo", "name email _id profileImage")
+        .populate("project");
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
       return res.status(200).json({ task });
     }
 
-    const task = await Task.findById(req.params.id).populate(
-      "assignedTo",
-      "name email _id profileImage"
-    );
+    const task = await Task.findById(req.params.id)
+      .populate("assignedTo", "name email _id profileImage")
+      .populate("project");
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -170,6 +167,60 @@ const getTask = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+// const projectTasks = async (req, res) => {
+//   try {
+//     const user = await User.findById(req.userId);
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+//     const member = await Member.findOne({
+//       user: req.userId,
+//       workshop: req.query.workshopId,
+//     }).populate("role");
+//     if (!member) {
+//       return res.status(404).json({ message: "Member not found" });
+//     }
+//     console.log(member, user, req.query);
+
+//     const id = new mongoose.Types.ObjectId(req.query.workshopId);
+//     console.log(id);
+
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = 5;
+//     const skip = (page - 1) * limit;
+
+//     const query = {
+//       workshop: id,
+//     };
+
+//     console.log(req.query.title);
+//     if (req.query.status && req.query.status != "null")
+//       query.status = req.query.status;
+//     if (req.query.priority && req.query.priority != "null")
+//       query.priority = req.query.priority;
+//     if (req.query.title && req.query.title != "") {
+//       query.title = { $regex: req.query.title, $options: "i" };
+//     }
+
+//     if (member.role.name === "Member") {
+//       query.assignedTo = req.userId;
+//     }
+
+//     const totalCount = await Task.countDocuments(query);
+
+//     const tasks = await Task.find(query)
+//       .populate("assignedTo", "name email _id profileImage")
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     res.status(200).json({ tasks, totalCount, page });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 
 const deleteTask = async (req, res) => {
   try {

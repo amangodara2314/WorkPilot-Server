@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Task = require("./task.model");
 
 const projectSchema = new mongoose.Schema({
   name: {
@@ -27,6 +28,22 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
 });
+
+projectSchema.pre(
+  "deleteOne",
+  { document: false, query: true },
+  async function (next) {
+    const projectId = this.getQuery()?._id;
+
+    if (projectId) {
+      await Task.deleteMany({ project: projectId });
+    } else {
+      console.log("Project ID not found in deleteOne query");
+    }
+
+    next();
+  }
+);
 
 const Project = mongoose.model("Project", projectSchema);
 module.exports = Project;

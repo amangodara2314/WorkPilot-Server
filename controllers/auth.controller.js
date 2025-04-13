@@ -77,10 +77,18 @@ const googleRegister = async (req, res) => {
       { session }
     );
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    const userObj = user.toObject();
 
+    delete userObj.password;
     await session.commitTransaction();
     session.endSession();
-    res.status(201).json({ user, workshop: workshop[0], token });
+
+    res.status(201).json({
+      user: userObj,
+      workshop: workshop[0],
+      token,
+      message: "Registration successful",
+    });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -110,6 +118,7 @@ const googleLogin = async (req, res) => {
       process.env.JWT_SECRET
     );
     res.status(200).json({
+      message: "Login successful",
       user: existingUser,
       token,
       currentWorkshop: existingUser.currentWorkshop,

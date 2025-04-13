@@ -148,8 +148,15 @@ const deleteWorkshop = async (req, res) => {
     if (!req.params.id) {
       return res.status(404).json({ message: "Workshop not found" });
     }
+    const workshop = await Workshop.findById(req.params.id);
+    if (!workshop) {
+      res.status(404).json({ message: "Workshop not found" });
+    }
     const user = await User.findById(req.userId).session(session);
-    const member = await Member.findOne({ user: req.userId })
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.params.id,
+    })
       .populate({
         path: "role",
         populate: { path: "permissions", model: "Permission" },
@@ -172,6 +179,7 @@ const deleteWorkshop = async (req, res) => {
       user: req.userId,
       workshop: { $ne: new mongoose.Types.ObjectId(req.params.id) },
     })
+      .populate("workshop")
       .populate({
         path: "user",
         populate: { path: "currentWorkshop", model: "Workshop" },
@@ -186,16 +194,10 @@ const deleteWorkshop = async (req, res) => {
       });
     }
 
-    await Task.deleteMany({ workshop: req.params.id }).session(session);
-    await Member.deleteMany({ workshop: req.params.id }).session(session);
-    await Project.deleteMany({ workshop: req.params.id }).session(session);
-    const workshop = await Workshop.findByIdAndDelete(req.params.id).session(
-      session
-    );
-    console.log(userWorkshop.workshop);
+    await workshop.deleteOne();
+
     user.currentWorkshop = userWorkshop.workshop;
     await user.save({ session });
-    console.log(user.currentWorkshop);
 
     await session.commitTransaction();
     session.endSession();
@@ -217,9 +219,28 @@ const joinWorkshop = async (req, res) => {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
+    const { code } = req.params;
+    if (!code) {
+      return res.status(404).json({ message: "Invalid link" });
+    }
+    const workshop = await Workshop.findOne({ inviteCode: code });
+    if (!workshop) {
+      return await res
+        .status(404)
+        .json({ message: "Invalid link. Workshop not found" });
+    }
     const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+    const existingMember = await Member.findOne({
+      user: req.userId,
+      workshop: workshop._id,
+    });
+    if (existingMember) {
+      return res
+        .status(400)
+        .json({ message: "You are already a member of this workshop" });
     }
     const userRole = await Role.findOne({ name: "Member" });
     if (!userRole) {
@@ -229,16 +250,17 @@ const joinWorkshop = async (req, res) => {
       [
         {
           user: req.userId,
-          workshop: req.params.id,
+          workshop: workshop._id,
           role: userRole._id,
         },
       ],
       { session }
     );
-
+    user.currentWorkshop = workshop._id;
+    await user.save({ session });
     await session.commitTransaction();
     session.endSession();
-    res.status(201).json({ member });
+    res.status(201).json({ workshop });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
