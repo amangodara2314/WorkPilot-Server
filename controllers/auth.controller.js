@@ -83,7 +83,7 @@ const googleRegister = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.status(201).json({
+    res.status(200).json({
       user: userObj,
       workshop: workshop[0],
       token,

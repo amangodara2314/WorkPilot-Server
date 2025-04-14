@@ -22,19 +22,21 @@ const getMembers = async (req, res) => {
       path: "role",
       populate: { path: "permissions", model: "Permission" },
     });
-    if (!member || !member.role.permissions.member.includes("view")) {
-      res
-        .status(404)
-        .json({ message: "You don't have permission to view members" });
+    if (!member) {
+      res.status(404).json({ message: "Member not found" });
       return;
     }
-
-    const joinUrl = `${process.env.CLIENT_URL}/workshop/join/${workshop.inviteCode}`;
-
     const members = await Member.find({ workshop: req.params.id })
       .populate("user", "_id email name profileImage")
       .populate("role");
-    res.status(200).json({ members, joinUrl });
+    if (member.role.name == "Member") {
+      res.status(200).json({ members, joinUrl: null });
+      return;
+    }
+    res.status(200).json({
+      members,
+      joinUrl: `${process.env.CLIENT_URL}/workshop/join/${workshop.inviteCode}`,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -43,11 +45,18 @@ const getMembers = async (req, res) => {
 
 const changeRole = async (req, res) => {
   try {
-    console.log(req.body);
     const user = await User.findById(req.userId);
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
+    }
+    const existingMember = await Member.findById(req.params.id).populate(
+      "role"
+    );
+    if (existingMember.role.name == "Owner") {
+      return res.status(400).json({
+        message: "You cannot change the role of workshop's owner",
+      });
     }
     const workshop = await Workshop.findById(req.body.workshop);
     if (!workshop) {

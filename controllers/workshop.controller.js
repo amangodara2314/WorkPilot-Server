@@ -8,9 +8,30 @@ const Role = require("../models/role.model");
 const getWorkshopDetails = async (req, res) => {
   const { id } = req.params;
   try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     const workshop = await Workshop.findById(id);
     if (!workshop) {
       return res.status(404).json({ message: "Workshop not found" });
+    }
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: id,
+    }).populate({
+      path: "role",
+      populate: { path: "permissions", model: "Permission" },
+    });
+
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    const role = member.role.name || "Member";
+    const taskQuery = { workshop: id };
+    if (role == "Member") {
+      taskQuery.assignedTo = req.userId;
     }
     const [
       totalTasks,
@@ -19,11 +40,18 @@ const getWorkshopDetails = async (req, res) => {
       recentTasks,
       recentMembers,
     ] = await Promise.all([
-      Task.countDocuments({ workshop: id }),
+      Task.countDocuments(taskQuery),
       Project.countDocuments({ workshop: id }),
       Member.countDocuments({ workshop: id }),
-      Task.find({ workshop: id }).sort({ createdAt: -1 }).limit(5),
-      Member.find({ workshop: id }).sort({ createdAt: -1 }).limit(5),
+      Task.find(taskQuery)
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate(["assignedTo", "project"]),
+      Member.find({ workshop: id })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate("user", "-password")
+        .populate("role"),
     ]);
 
     res.status(200).json({
