@@ -27,6 +27,10 @@ const projectSchema = new mongoose.Schema({
     ref: "Workshop",
     required: true,
   },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 projectSchema.pre(

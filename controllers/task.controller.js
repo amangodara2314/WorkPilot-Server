@@ -121,7 +121,8 @@ const getTasks = async (req, res) => {
       .populate("assignedTo", "name email _id profileImage")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ tasks, totalCount, page });
   } catch (error) {

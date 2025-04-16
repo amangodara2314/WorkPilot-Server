@@ -26,7 +26,7 @@ const createProject = async (req, res) => {
         .json({ message: "You don't have permission to create a project" });
     }
     console.log(user);
-    const newProject = await await Project.create({
+    const newProject = await Project.create({
       name,
       emoji,
       description,
@@ -46,7 +46,11 @@ const createProject = async (req, res) => {
 
 const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ workshop: req.params.workshopId });
+    const projects = await Project.find({
+      workshop: req.params.workshopId,
+    }).sort({
+      createdAt: -1,
+    });
     res.status(200).json({ projects });
   } catch (error) {
     console.log(error);
