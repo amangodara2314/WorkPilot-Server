@@ -309,7 +309,7 @@ const changeWorkshop = async (req, res) => {
     }
     user.currentWorkshop = req.params.id;
     await user.save();
-    res.status(201).json({ message: "Workshop changed successfully" });
+    res.status(201).json({ message: "Workshop changed successfully", user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });

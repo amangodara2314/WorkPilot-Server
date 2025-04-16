@@ -8,16 +8,140 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 
 const register = async (req, res) => {
-  const { name, email, password } = req.body;
+  const session = await mongoose.startSession();
   try {
-    const user = await User.create({ name, email, password });
-    const workshop = await Workshop.create({
-      name: `${name}'s Workshop`,
-      owner: user._id,
+    session.startTransaction();
+    const { name, email, password } = req.body;
+
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "User already exists with this email" });
+    }
+
+    // Create a new user instance but don't save it yet
+    const user = new User({
+      name,
+      email,
+      password,
     });
-    res.status(201).json({ user, workshop });
+
+    // Create workshop using the user's ID
+    const workshop = await Workshop.create(
+      [
+        {
+          name: `${name}'s Workshop`,
+          owner: user._id,
+        },
+      ],
+      { session }
+    );
+
+    // Set current workshop for the user and save
+    user.currentWorkshop = workshop[0]._id;
+    await user.save({ session });
+
+    // Assign owner role to the user for this workshop
+    const userRole = await Role.findOne({ name: "Owner" });
+    if (!userRole) {
+      throw new Error("Owner role not found");
+    }
+
+    await Member.create(
+      [
+        {
+          user: user._id,
+          workshop: workshop[0]._id,
+          role: userRole._id,
+        },
+      ],
+      { session }
+    );
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
+    // Remove password from user object before sending response
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({
+      message: "Registration successful",
+      user: userObj,
+      workshop: workshop[0],
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    await session.abortTransaction();
+    session.endSession();
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
+    // Find user
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+      return res.status(401).json({ message: "Email does not exist." });
+    }
+
+    // Check if user used Google login
+    if (user.isGoogleLogin) {
+      return res.status(400).json({
+        message:
+          "This account uses Google Authentication. Please login with Google.",
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
+    // Get current workshop details if available
+    let currentWorkshop = null;
+    if (user.currentWorkshop) {
+      currentWorkshop = await Workshop.findById(user.currentWorkshop);
+    }
+
+    // Remove password from user object before sending response
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    res.status(200).json({
+      message: "Login successful",
+      user: userObj,
+      token,
+      currentWorkshop,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -129,4 +253,4 @@ const googleLogin = async (req, res) => {
   }
 };
 
-module.exports = { register, googleRegister, googleLogin };
+module.exports = { register, login, googleRegister, googleLogin };

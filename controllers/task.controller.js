@@ -21,7 +21,11 @@ const createTask = async (req, res) => {
         .status(403)
         .json({ message: "You don't have permission to create a task" });
     }
-    const task = await Task.create({ ...req.body, createdBy: req.userId });
+    const newTask = await Task.create({ ...req.body, createdBy: req.userId });
+    const task = await newTask.populate(
+      "assignedTo",
+      "name email _id profileImage"
+    );
 
     res.status(200).json({ message: "Task created successfully!", task });
   } catch (error) {
@@ -59,8 +63,6 @@ const updateTask = async (req, res) => {
       },
       { new: true }
     ).populate("assignedTo", "name email _id profileImage");
-
-    console.log(task);
 
     res.status(200).json({ message: "Task updated successfully!", task });
   } catch (error) {

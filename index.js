@@ -18,7 +18,7 @@ const io = new Server(server, {
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   })
 );
 app.use(express.json());
@@ -39,13 +39,69 @@ mongoose
 io.on("connection", (socket) => {
   console.log(`Socket ${socket.id} connected`);
 
-  socket.on("join_room", ({ userId, workshopId }) => {
-    socket.join(userId);
+  socket.on("join_room", ({ user, workshopId }) => {
+    socket.data.user = user;
+    socket.join(user._id);
     socket.join(workshopId);
-    console.log(userId, workshopId, "joined");
+
+    io.of("/")
+      .in(workshopId)
+      .fetchSockets()
+      .then((sockets) => {
+        const users = sockets.map((s) => s.data.user);
+        io.to(workshopId).emit("active_users", users);
+      });
   });
 
-  socket.on("disconnect", () => {
-    console.log(`Socket ${socket.id} disconnected`);
+  socket.on("manual_disconnect", async () => {
+    const workshopId = socket.data?.user?.currentWorkshop._id;
+
+    if (workshopId) {
+      socket.broadcast.to(workshopId).emit("user_disconnected", {
+        userId: socket?.data?.user._id,
+      });
+    }
+  });
+
+  socket.on("new_notification", async (data) => {
+    socket.broadcast.to(data.workshopId).emit("new_message", data);
+  });
+  socket.on("new_task", async (data) => {
+    socket.broadcast.to(data.workshopId).emit("new_task", data);
+  });
+
+  socket.on("new_project", async (data) => {
+    console.log(data);
+    socket.broadcast.to(data.workshop).emit("new_project", data);
+  });
+
+  socket.on("workshop_changed", ({ user, workshopId, prevWorkshopId }) => {
+    socket.data.user = user;
+    socket.leave(socket.data.user.currentWorkshop._id);
+    socket.join(user._id);
+    socket.join(workshopId);
+    console.log(socket.data.user, workshopId, socket.data.user.currentWorkshop);
+
+    socket.broadcast.to(prevWorkshopId).emit("user_disconnected", {
+      userId: socket?.data?.user._id,
+    });
+
+    io.of("/")
+      .in(workshopId)
+      .fetchSockets()
+      .then((sockets) => {
+        const users = sockets.map((s) => s.data.user);
+        io.to(workshopId).emit("active_users", users);
+      });
+  });
+
+  socket.on("disconnect", async () => {
+    const workshopId = socket.data?.user?.currentWorkshop._id;
+    console.log(workshopId);
+    if (workshopId) {
+      const sockets = await io.of("/").in(workshopId).fetchSockets();
+      const users = sockets.map((s) => s.data.user);
+      io.to(workshopId).emit("active_users", users);
+    }
   });
 });

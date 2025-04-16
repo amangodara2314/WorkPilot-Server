@@ -26,14 +26,17 @@ const createProject = async (req, res) => {
         .json({ message: "You don't have permission to create a project" });
     }
     console.log(user);
-    const project = await Project.create({
+    const newProject = await await Project.create({
       name,
       emoji,
       description,
       createdBy: req.userId,
       workshop: user.currentWorkshop,
     });
-
+    const project = await newProject.populate(
+      "createdBy",
+      "name email _id profileImage"
+    );
     res.status(201).json({ project });
   } catch (error) {
     console.log(error);
