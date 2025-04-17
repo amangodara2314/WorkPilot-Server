@@ -80,13 +80,17 @@ const changeRole = async (req, res) => {
         .json({ message: "You don't have permission to edit members" });
       return;
     }
-    const role = await Role.findOne({ name: req.body.role });
+    const role = await Role.findOne({ name: req.body.role }).populate(
+      "permissions"
+    );
     if (!role) {
       res.status(404).json({ message: "Role not found" });
       return;
     }
     await Member.findByIdAndUpdate(req.params.id, { role: role._id });
-    res.status(200).json({ message: "Role changed successfully" });
+    res
+      .status(200)
+      .json({ message: "Role changed successfully", role, member });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });

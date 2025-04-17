@@ -103,7 +103,11 @@ const getTasks = async (req, res) => {
     if (req.query.title && req.query.title != "null") {
       query.title = { $regex: req.query.title, $options: "i" };
     }
-    if (req.query.project && req.query.project != "null") {
+    if (
+      req.query.project &&
+      req.query.project != "null" &&
+      req.query.project != "undefined"
+    ) {
       query.project = req.query.project;
     }
 

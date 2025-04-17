@@ -46,6 +46,15 @@ const createProject = async (req, res) => {
 
 const getProjects = async (req, res) => {
   try {
+    const user = await User.findById(req.userId);
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.params.workshopId,
+    });
+    if (!user || !member) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const projects = await Project.find({
       workshop: req.params.workshopId,
     }).sort({

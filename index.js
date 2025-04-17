@@ -11,7 +11,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   },
 });
 
@@ -41,6 +41,7 @@ io.on("connection", (socket) => {
 
   socket.on("join_room", ({ user, workshopId }) => {
     socket.data.user = user;
+    console.log(user._id, workshopId, "joined room");
     socket.join(user._id);
     socket.join(workshopId);
 
@@ -71,8 +72,28 @@ io.on("connection", (socket) => {
   });
 
   socket.on("new_project", async (data) => {
-    console.log(data);
     socket.broadcast.to(data.workshop).emit("new_project", data);
+  });
+
+  socket.on("new_member", async (data) => {
+    socket.broadcast.to(data.workshop).emit("new_member");
+  });
+
+  socket.on("project_updated", async (data) => {
+    io.to(data?.workshop).emit("project_updated", data);
+  });
+
+  socket.on("role_changed", async (data) => {
+    io.in(data.userId)
+      .fetchSockets()
+      .then((sockets) => {
+        console.log(
+          "Sockets in user room",
+          data.userId,
+          sockets.map((s) => s.id)
+        );
+      });
+    io.to(data.userId).emit("role_changed", data);
   });
 
   socket.on("workshop_changed", ({ user, workshopId, prevWorkshopId }) => {
@@ -80,7 +101,6 @@ io.on("connection", (socket) => {
     socket.leave(socket.data.user.currentWorkshop._id);
     socket.join(user._id);
     socket.join(workshopId);
-    console.log(socket.data.user, workshopId, socket.data.user.currentWorkshop);
 
     socket.broadcast.to(prevWorkshopId).emit("user_disconnected", {
       userId: socket?.data?.user._id,
@@ -97,7 +117,6 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", async () => {
     const workshopId = socket.data?.user?.currentWorkshop._id;
-    console.log(workshopId);
     if (workshopId) {
       const sockets = await io.of("/").in(workshopId).fetchSockets();
       const users = sockets.map((s) => s.data.user);

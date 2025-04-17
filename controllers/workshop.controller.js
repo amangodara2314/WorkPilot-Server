@@ -48,7 +48,7 @@ const getWorkshopDetails = async (req, res) => {
         .limit(5)
         .populate(["assignedTo", "project"]),
       Member.find({ workshop: id })
-        .sort({ createdAt: -1 })
+        .sort({ joinedAt: -1 })
         .limit(5)
         .populate("user", "-password")
         .populate("role"),
