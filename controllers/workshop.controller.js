@@ -303,13 +303,25 @@ const changeWorkshop = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    const member = await Member.findOne({
+      user: req.userId,
+      workshop: req.params.id,
+    }).populate({
+      path: "role",
+      populate: { path: "permissions", model: "Permission" },
+    });
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
     const workshop = await Workshop.findById(req.params.id);
     if (!workshop) {
       return res.status(404).json({ message: "Workshop not found" });
     }
     user.currentWorkshop = req.params.id;
     await user.save();
-    res.status(201).json({ message: "Workshop changed successfully", user });
+    res
+      .status(201)
+      .json({ message: "Workshop changed successfully", user, member });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });

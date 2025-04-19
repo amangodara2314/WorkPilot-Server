@@ -37,8 +37,6 @@ mongoose
   .catch((err) => console.log(err));
 
 io.on("connection", (socket) => {
-  console.log(`Socket ${socket.id} connected`);
-
   socket.on("join_room", ({ user, workshopId }) => {
     socket.data.user = user;
     console.log(user._id, workshopId, "joined room");
@@ -56,7 +54,6 @@ io.on("connection", (socket) => {
 
   socket.on("manual_disconnect", async () => {
     const workshopId = socket.data?.user?.currentWorkshop._id;
-
     if (workshopId) {
       socket.broadcast.to(workshopId).emit("user_disconnected", {
         userId: socket?.data?.user._id,
@@ -67,8 +64,13 @@ io.on("connection", (socket) => {
   socket.on("new_notification", async (data) => {
     socket.broadcast.to(data.workshopId).emit("new_message", data);
   });
+
   socket.on("new_task", async (data) => {
     socket.broadcast.to(data.workshopId).emit("new_task", data);
+  });
+
+  socket.on("task_updated", async (data) => {
+    socket.broadcast.to(data.workshop).emit("task_updated", data);
   });
 
   socket.on("new_project", async (data) => {
@@ -81,6 +83,15 @@ io.on("connection", (socket) => {
 
   socket.on("project_updated", async (data) => {
     io.to(data?.workshop).emit("project_updated", data);
+  });
+
+  socket.on("task_deleted", async (data) => {
+    io.to(data?.workshop).emit("task_deleted", data);
+  });
+
+  socket.on("project_deleted", async (data) => {
+    console.log(data);
+    io.to(data?.workshop).emit("project_deleted", data);
   });
 
   socket.on("role_changed", async (data) => {
