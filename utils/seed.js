@@ -20,17 +20,17 @@ const seedDatabase = async () => {
     };
 
     const adminPermissions = {
-      workshop: ["create", "edit", "delete", "view"],
+      workshop: ["create", "edit", "view"],
       project: ["create", "edit", "delete", "view"],
       task: ["create", "edit", "delete", "view"],
       member: ["add", "edit", "delete", "view"],
     };
 
     const memberPermissions = {
-      workshop: [],
-      project: [],
+      workshop: ["view"],
+      project: ["view"],
       task: ["edit", "view"],
-      member: [],
+      member: ["view"],
     };
 
     console.log("Creating permissions...");

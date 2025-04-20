@@ -73,15 +73,19 @@ const getUserWorkshops = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const workshops = await Member.find({ user: req.userId })
-      .populate("workshop")
-      .populate({
-        path: "role",
-        populate: {
-          path: "permissions",
-          model: "Permission",
+    const workshops = await Member.aggregate([
+      { $match: { user: new mongoose.Types.ObjectId(req.userId) } },
+      {
+        $lookup: {
+          from: "workshops",
+          localField: "workshop",
+          foreignField: "_id",
+          as: "workshop",
         },
-      });
+      },
+      { $unwind: "$workshop" },
+      { $replaceRoot: { newRoot: "$workshop" } },
+    ]);
 
     res.status(200).json({ workshops });
   } catch (error) {
@@ -212,6 +216,10 @@ const deleteWorkshop = async (req, res) => {
         path: "user",
         populate: { path: "currentWorkshop", model: "Workshop" },
       })
+      .populate({
+        path: "role",
+        populate: { path: "permissions", model: "Permission" },
+      })
       .session(session);
 
     if (!userWorkshop) {
@@ -234,6 +242,8 @@ const deleteWorkshop = async (req, res) => {
       message: "Workshop deleted successfully!",
       workshop,
       userWorkshop: userWorkshop.workshop,
+      permissions: userWorkshop.role.permissions,
+      role: userWorkshop.role,
     });
   } catch (error) {
     await session.abortTransaction();

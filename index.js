@@ -90,8 +90,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("project_deleted", async (data) => {
-    console.log(data);
     io.to(data?.workshop).emit("project_deleted", data);
+  });
+
+  socket.on("workshop_deleted", async (data) => {
+    socket.broadcast.to(data).emit("workshop_deleted");
   });
 
   socket.on("role_changed", async (data) => {
