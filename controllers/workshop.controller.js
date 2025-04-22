@@ -331,7 +331,12 @@ const changeWorkshop = async (req, res) => {
     await user.save();
     res
       .status(201)
-      .json({ message: "Workshop changed successfully", user, member });
+      .json({
+        message: "Workshop changed successfully",
+        user,
+        member,
+        workshop,
+      });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });

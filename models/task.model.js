@@ -60,6 +60,10 @@ const taskSchema = new mongoose.Schema({
     ref: "Workshop",
     required: true, // on delete cascade
   },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 const Task = mongoose.model("Task", taskSchema);

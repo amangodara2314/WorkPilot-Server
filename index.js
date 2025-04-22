@@ -86,7 +86,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("task_deleted", async (data) => {
-    io.to(data?.workshop).emit("task_deleted", data);
+    io.to(data?.workshopId).emit("task_deleted", data);
   });
 
   socket.on("project_deleted", async (data) => {
