@@ -7,8 +7,10 @@ It powers features like user authentication, workshops, projects, tasks, and rea
 
 ## 📽 Demo
 
-[Watch the Demo Video](https://youtu.be/1Oa4RlujmLQ)
 
+[![Watch the Demo](https://img.youtube.com/vi/1Oa4RlujmLQ/0.jpg)](https://youtu.be/1Oa4RlujmLQ)
+
+Click the image above to watch the demo on YouTube.
 
 ---
 
