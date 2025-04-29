@@ -7,7 +7,7 @@ This is the **frontend** of a full-stack collaborative project management tool b
 ## 🎥 Demo
 
 Watch the 1-minute demo video here:  
-🔗 [Click to watch on LinkedIn]([https://www.linkedin.com/your-video-link](https://youtu.be/1Oa4RlujmLQ))
+🔗 [Click to watch on Youtube](https://youtu.be/1Oa4RlujmLQ)
 
 ---
 
