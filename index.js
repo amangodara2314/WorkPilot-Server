@@ -7,6 +7,7 @@ const router = require("./routers/routes");
 const seedDatabase = require("./utils/seed");
 const { Server } = require("socket.io");
 const http = require("http");
+const { handleSocketLogic } = require("./utils/socket");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
